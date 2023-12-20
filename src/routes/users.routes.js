@@ -22,7 +22,7 @@ router.get("/paginated", async (req, res) => {
   }
 });
 router.get("/users", async (req, res) => {
-  const data = await UserManager.getUsersPaginated(
+  const data = await manager.getUsersPaginated(
     req.query.page || 1,
     req.query.limit || 50
   );

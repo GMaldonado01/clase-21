@@ -70,5 +70,8 @@ router.get("/profile", async (req, res) => {
 router.get("/register", async (req, res) => {
   res.render("register", {});
 });
+router.get("/", async (req, res) => {
+  res.redirect("./login");
+});
 
 export default router;

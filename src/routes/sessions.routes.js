@@ -1,5 +1,11 @@
 import { Router } from "express";
+import passport from "passport";
 
+import userModel from "../dao/models/user.model.js";
+import { createHash, isValidPassword } from "../utils.js";
+import initPassport from "../config/passport.config.js";
+
+initPassport();
 const router = Router();
 
 const auth = (req, res, next) => {
@@ -58,35 +64,81 @@ router.get("/admin", auth, async (req, res) => {
     res.status(500).send({ status: "ERR", data: err.message });
   }
 });
+router.get("/hash/:pass", async (req, res) => {
+  res.status(200).send({ status: "OK", data: createHash(req.params.pass) });
+});
+router.get("/failregister", async (req, res) => {
+  res.status(400).send({
+    status: "ERR",
+    data: "El email ya existe o faltan datos obligatorios",
+  });
+});
+
+router.get("/failrestore", async (req, res) => {
+  res.status(400).send({
+    status: "ERR",
+    data: "El email no existe o faltan datos obligatorios",
+  });
+});
+
+router.get(
+  "/github",
+  passport.authenticate("githubAuth", { scope: ["user:email"] }),
+  async (req, res) => {}
+);
+
+router.get(
+  "/githubcallback",
+  passport.authenticate("githubAuth", { failureRedirect: "/login" }),
+  async (req, res) => {
+    req.session.user = { username: req.user.email, admin: true };
+    // req.session.user = req.user
+    res.redirect("/products");
+  }
+);
 
 router.post("/login", async (req, res) => {
   try {
-    const { user, pass } = req.body;
+    const { email, pass } = req.body;
 
-    if (user === "gmaldonado" && pass === "ggg123") {
-      req.session.user = { username: user, admin: true };
-      res.status(200).send({ status: "OK", data: "Sesión iniciada" });
+    const userInDb = await userModel.findOne({ email: email });
+    if (userInDb !== null && isValidPassword(userInDb, pass)) {
+      req.session.user = { username: email, admin: true };
+      res.redirect("/products");
     } else {
       res.status(401).send({ status: "ERR", data: "Datos no válidos" });
     }
   } catch (err) {
-    res.status(500).send({ status: "ERR", data: err.message });
+    res.redirect("/login");
   }
 });
 
-router.post("/register", async (req, res) => {
-  try {
-    const { user, pass, edad, mail } = req.body;
-
-    if (user === user && pass === pass) {
-      req.session.user = { username: user, admin: false };
-      res.status(200).send({ status: "OK", data: "Usuario registrado" });
-    } else {
-      res.status(401).send({ status: "ERR", data: "Datos no válidos" });
+router.post(
+  "/register",
+  passport.authenticate("registerAuth", {
+    failureRedirect: "/api/sessions/failregister",
+  }),
+  async (req, res) => {
+    try {
+      res.redirect("/products");
+    } catch (err) {
+      res.redirect("/login");
     }
-  } catch (err) {
-    res.status(500).send({ status: "ERR", data: err.message });
   }
-});
+);
+
+router.post(
+  "/restore",
+  passport.authenticate("restoreAuth", {
+    failureRedirect: "/api/sessions/failrestore",
+  }),
+  async (req, res) => {
+    try {
+      res.status(200).send({ status: "OK", data: "Clave actualizada" });
+    } catch (err) {
+      res.status(500).send({ status: "ERR", data: err.message });
+    }
+  }
+);
 
 export default router;
