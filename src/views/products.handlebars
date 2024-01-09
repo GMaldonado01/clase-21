@@ -1,5 +1,7 @@
 <h1>{{title}}</h1>
-<h2>Bienvenido, {{{this.user.email}}}!</h2>
+{{#each users_with_pass}}
+<h2>Bienvenido, {{this.user.email}}!</h2>
+{{/each}}
     <ul>
         {{#each products}}
             <li>${{this.price}} <br> {{this.title}} <br> ({{this.description}})</li>
